@@ -11,6 +11,10 @@ cimport numpy as np
 
 cdef extern from "math.h":
     double exp(double x) nogil
+    double sqrt(double x) nogil
+    double atan2(double y, double x) nogil
+    double cos(double x) nogil
+    double sin(double x) nogil
 
 cdef extern from "gsl/gsl_sf_gamma.h":
     double gsl_sf_lngamma(double x) nogil
@@ -18,10 +22,28 @@ cdef extern from "gsl/gsl_sf_gamma.h":
 
 __all__ = ['acceleration']
 
-cpdef acceleration(double[::1] r, double[::1] a,
+cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
+                   double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
                    int nmax, int lmax):
 
-    cdef unsigned int n,l
+    cdef unsigned int n,l,m
+    cdef unsigned int i,norbits
+    cdef:
+        double G = 1.
+        double ar,aphi,ath
+        double phinltil
+        double clm,dlm,elm,flm
+        double temp3,temp4,temp5,temp6
+
+    norbits = xyz.shape[0]
+
+    cosmphi = np.zeros(lmax+1)
+    sinmphi = np.zeros(lmax+1)
+    ultrasp = np.zeros((nmax+1,lmax+1))
+    ultraspt = np.zeros((nmax+1,lmax+1))
+    ultrasp1 = np.zeros((nmax+1,lmax+1))
+    plm = np.zeros((lmax+1,lmax+1))
+    dplm = np.zeros((lmax+1,lmax+1))
 
     # ----------------------------------------------------------------
     # This stuff was all in a "firstc" or "first calculation" check
@@ -33,6 +55,9 @@ cpdef acceleration(double[::1] r, double[::1] a,
     twoalpha = np.zeros(lmax+1)
     coeflm = np.zeros((lmax+1,lmax+1))
     dblfact = np.zeros(lmax+1)
+    c1 = np.zeros((nmax, lmax+1))
+    c2 = np.zeros((nmax,lmax+1))
+    c3 = np.zeros(nmax)
     dblfact[0] = 1.
 
     for l in range(2,lmax+1):
@@ -57,9 +82,105 @@ cpdef acceleration(double[::1] r, double[::1] a,
 
 
     for n in range(1,nmax+1):
-        c3[n] = 1./(n+1)
+        c3[n-1] = 1./(n+1)
         for l in range(lmax+1):
-            c1[n,l] = 2.0*n + twoalpha[l]
-            c2[n,l] = n-1.0 + twoalpha[l]
+            c1[n-1,l] = 2.0*n + twoalpha[l]
+            c2[n-1,l] = n-1.0 + twoalpha[l]
     # ----------------------------------------------------------------
+
+    for i in range(norbits):
+        r = sqrt(xyz[i,0]*xyz[i,0] + xyz[i,1]*xyz[i,1] + xyz[i,2]*xyz[i,2])
+        costh = xyz[i,2]/r
+        phi = atan2(xyz[i,1], xyz[i,0])
+        xi = (r-1.)/(r+1.)
+
+        for m in range(lmax+1):
+            cosmphi[m] = cos(m*phi)
+            sinmphi[m] = sin(m*phi)
+
+        pot[i] = 0.
+        ar = 0.
+        ath = 0.
+        aphi = 0.
+
+        for l in range(lmax+1):
+            ultrasp[0,l] = 1.0
+            ultrasp[1,l] = twoalpha[l]*xi
+            ultrasp1[0,l] = 0.0
+            ultrasp1[1,l] = 1.0
+
+            un = ultrasp[1,l]
+            unm1 = 1.0
+
+            for n in range(1,nmax):
+                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
+                unm1 = un
+                un = ultrasp[n+1,l]
+                ultrasp1[n+1,l] = ((twoalpha[l] + (n+1)-1.)*unm1-(n+1)*xi*ultrasp[n+1,l]) / \
+                                   (twoalpha[l]*(1.-xi*xi))
+
+        for m in range(lmax+1):
+            plm[m,m] = 1.0
+            if m > 0:
+                plm[m,m] = (-1.)**m * dblfact[m] * sqrt(1.-costh*costh)**m
+
+            plm1m = plm[m,m]
+            plm2m = 0.0
+
+            for l in range(m+1,lmax+1):
+                plm[l,m] = (costh*(2.*l-1.)*plm1m-(l+m-1.)*plm2m)/(l-m)
+                plm2m = plm1m
+                plm1m = plm[l,m]
+
+        dplm[0,0] = 0.0
+
+        for l in range(1,lmax+1):
+            for m in range(0,l):
+                if l == 0:
+                    dplm[l,m] = l*costh*plm[l,m] / (costh*costh-1.0)
+                else:
+                    dplm[l,m] = ((l*costh*plm[l,m]-(l+m)*plm[l-1,m]) /
+                                 (costh*costh-1.0))
+
+        for l in range(0,lmax+1):
+            temp3 = 0.0
+            temp4 = 0.0
+            temp5 = 0.0
+            temp6 = 0.0
+
+            for m in range(l+1):
+                clm = 0.0
+                dlm = 0.0
+                elm = 0.0
+                flm = 0.0
+
+                for n in range(nmax+1):
+                    clm += ultrasp[n,l] * cos_coeff[n,l,m]
+                    dlm += ultrasp[n,l] * sin_coeff[n,l,m]
+                    elm += ultrasp1[n,l] * cos_coeff[n,l,m]
+                    flm += ultrasp1[n,l] * sin_coeff[n,l,m]
+
+                temp3 += plm[l,m] * (clm*cosmphi[m] + dlm*sinmphi[m])
+                temp4 -= plm[l,m] * (elm*cosmphi[m] + flm*sinmphi[m])
+                temp5 -= dplm[l,m] * (clm*cosmphi[m] + dlm*sinmphi[m])
+                temp6 -= m*plm[l,m] * (dlm*cosmphi[m] - clm*sinmphi[m])
+
+            phinltil = r**l / ((1.+r)**(2*l+1))
+            pot[i] += temp3*phinltil
+
+            ar += phinltil*(-temp3*(l/r-(2.*l+1.)/(1.+r)) + \
+                            temp4*4.*(2.*l+1.5)/(1.+r)**2)
+            ath += temp5*phinltil
+            aphi += temp6*phinltil
+
+        cosp = cos(phi)
+        sinp = sin(phi)
+
+        sinth = sqrt(1.-costh*costh)
+        ath = -sinth*ath/r
+        aphi = aphi/(r*sinth)
+        acc[i,0] = G*(sinth*cosp*ar + costh*cosp*ath - sinp*aphi)
+        acc[i,1] = G*(sinth*sinp*ar + costh*sinp*ath + cosp*aphi)
+        acc[i,2] = G*(costh*ar - sinth*ath)
+        pot[i] *= G
 
