@@ -1,4 +1,9 @@
 # coding: utf-8
+# cython: boundscheck=False
+# cython: nonecheck=False
+# cython: cdivision=True
+# cython: wraparound=False
+# cython: profile=False
 
 """ Basis Function Expansion in Cython """
 
