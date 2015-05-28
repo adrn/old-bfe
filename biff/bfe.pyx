@@ -28,7 +28,7 @@ cdef extern from "gsl/gsl_sf_gamma.h":
 
 __all__ = ['acceleration']
 
-cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
+cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
                    int nmax, int lmax):
 
@@ -86,11 +86,9 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
             cosmphi[m] = cos(m*phi)
             sinmphi[m] = sin(m*phi)
 
-        pot[i] = 0.
         ar = 0.
         ath = 0.
         aphi = 0.
-
         for l in range(lmax+1):
             ultrasp[0,l] = 1.0
             ultrasp[1,l] = twoalpha[l]*xi
@@ -99,7 +97,6 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
 
             un = ultrasp[1,l]
             unm1 = 1.0
-
             for n in range(1,nmax):
                 ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
                 unm1 = un
@@ -121,7 +118,6 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
                 plm1m = plm[l,m]
 
         dplm[0,0] = 0.0
-
         for l in range(1,lmax+1):
             for m in range(0,l):
                 if l == 0:
@@ -154,8 +150,6 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
                 temp6 -= m*plm[l,m] * (dlm*cosmphi[m] - clm*sinmphi[m])
 
             phinltil = r**l / ((1.+r)**(2*l+1))
-            pot[i] += temp3*phinltil
-
             ar += phinltil*(-temp3*(l/r-(2.*l+1.)/(1.+r)) + \
                             temp4*4.*(2.*l+1.5)/(1.+r)**2)
             ath += temp5*phinltil
