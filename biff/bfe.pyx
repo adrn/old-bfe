@@ -13,6 +13,7 @@ __author__ = "adrn <adrn@astro.columbia.edu>"
 
 import numpy as np
 cimport numpy as np
+from libc.math cimport M_PI
 
 cdef extern from "math.h":
     double exp(double x) nogil
@@ -31,24 +32,26 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
                    int nmax, int lmax):
 
-    cdef int n,l,m
-    cdef int i,norbits
+    cdef int n,l,m,i
     cdef:
+        int norbits = xyz.shape[0]
         double G = 1.
         double ar,aphi,ath
-        double phinltil
+        double phinltil,costh,un,xi,phi,r,unm1,plm1m,plm2m
         double clm,dlm,elm,flm
         double temp3,temp4,temp5,temp6
 
     norbits = xyz.shape[0]
 
-    cosmphi = np.zeros(lmax+1)
-    sinmphi = np.zeros(lmax+1)
-    ultrasp = np.zeros((nmax+1,lmax+1))
-    ultraspt = np.zeros((nmax+1,lmax+1))
-    ultrasp1 = np.zeros((nmax+1,lmax+1))
-    plm = np.zeros((lmax+1,lmax+1))
-    dplm = np.zeros((lmax+1,lmax+1))
+    # initialize empty arrays
+    cdef:
+        double[::1] cosmphi = np.zeros(lmax+1)
+        double[::1] sinmphi = np.zeros(lmax+1)
+        double[:,::1] ultrasp = np.zeros((nmax+1,lmax+1))
+        double[:,::1] ultraspt = np.zeros((nmax+1,lmax+1))
+        double[:,::1] ultrasp1 = np.zeros((nmax+1,lmax+1))
+        double[:,::1] plm = np.zeros((lmax+1,lmax+1))
+        double[:,::1] dplm = np.zeros((lmax+1,lmax+1))
 
     # ----------------------------------------------------------------
     # This stuff was all in a "firstc" or "first calculation" check
@@ -56,13 +59,14 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
     #   for now, just do it™
     cdef double arggam, deltam0
 
-    anltilde = np.zeros((nmax+1, lmax+1))
-    twoalpha = np.zeros(lmax+1)
-    coeflm = np.zeros((lmax+1,lmax+1))
-    dblfact = np.zeros(lmax+1)
-    c1 = np.zeros((nmax, lmax+1))
-    c2 = np.zeros((nmax,lmax+1))
-    c3 = np.zeros(nmax)
+    cdef:
+        double[:,::1] anltilde = np.zeros((nmax+1, lmax+1))
+        double[::1] twoalpha = np.zeros(lmax+1)
+        double[:,::1] coeflm = np.zeros((lmax+1,lmax+1))
+        double[::1] dblfact = np.zeros(lmax+1)
+        double[:,::1] c1 = np.zeros((nmax, lmax+1))
+        double[:,::1] c2 = np.zeros((nmax,lmax+1))
+        double[::1] c3 = np.zeros(nmax)
     dblfact[0] = 1.
 
     for l in range(2,lmax+1):
@@ -74,7 +78,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
             anltilde[n,l] = -2.**(8.*l+6.)*gsl_sf_fact(n)*(n+2.*l+1.5)
             arggam = 2.*l+1.5
             anltilde[n,l] *= (exp(gsl_sf_lngamma(arggam)))**2
-            anltilde[n,l] /= (4.*np.pi*knl*gsl_sf_fact(n+4*l+2))
+            anltilde[n,l] /= (4.*M_PI*knl*gsl_sf_fact(n+4*l+2))
 
     for l in range(lmax+1):
         twoalpha[l] = 2.0*(2.*l+1.5)
