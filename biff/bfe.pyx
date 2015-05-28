@@ -31,8 +31,8 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc, double[::1] pot,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
                    int nmax, int lmax):
 
-    cdef unsigned int n,l,m
-    cdef unsigned int i,norbits
+    cdef int n,l,m
+    cdef int i,norbits
     cdef:
         double G = 1.
         double ar,aphi,ath
