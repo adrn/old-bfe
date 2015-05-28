@@ -26,7 +26,7 @@ cdef extern from "gsl/gsl_sf_gamma.h":
     double gsl_sf_lngamma(double x) nogil
     double gsl_sf_fact(unsigned int n) nogil
 
-__all__ = ['acceleration']
+__all__ = ['acceleration', 'value']
 
 cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
