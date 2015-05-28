@@ -15,4 +15,4 @@ python setup.py build_ext
 python setup.py install
 ```
 
-To install Biff.
+to install Biff.
