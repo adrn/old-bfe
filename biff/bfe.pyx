@@ -58,7 +58,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
     cdef:
         double[::1] twoalpha = np.zeros(lmax+1)
         double[::1] dblfact = np.zeros(lmax+1)
-        double[:,::1] c1 = np.zeros((nmax, lmax+1))
+        double[:,::1] c1 = np.zeros((nmax,lmax+1))
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
     dblfact[0] = 1.
@@ -120,7 +120,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
         dplm[0,0] = 0.0
         for l in range(1,lmax+1):
             for m in range(0,l):
-                if l == 0:
+                if l == m:
                     dplm[l,m] = l*costh*plm[l,m] / (costh*costh-1.0)
                 else:
                     dplm[l,m] = ((l*costh*plm[l,m]-(l+m)*plm[l-1,m]) /
@@ -200,7 +200,7 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
         dblfact[l] = dblfact[l-1] * (2.*l - 1.)
 
     for l in range(lmax+1):
-        twoalpha[l] = 2.0*(2.*l+1.5)
+        twoalpha[l] = 2.0*(2.*l + 1.5)
 
     for n in range(1,nmax+1):
         c3[n-1] = 1./(n+1)
