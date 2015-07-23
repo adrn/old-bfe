@@ -28,6 +28,11 @@ cdef extern from "gsl/gsl_sf_gamma.h":
 
 __all__ = ['acceleration', 'value']
 
+cpdef compute_coefficients(double[:,::1] xyz, double[::1] m,
+                           double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
+                           int nmax, int lmax):
+    pass
+
 cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
                    int nmax, int lmax):
