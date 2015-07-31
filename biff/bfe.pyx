@@ -28,109 +28,6 @@ cdef extern from "gsl/gsl_sf_gamma.h":
 
 __all__ = ['acceleration', 'value', 'compute_coefficients']
 
-cpdef compute_coefficients(double[:,::1] xyz, double[::1] mass,
-                           double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
-                           int nmax, int lmax):
-
-    cdef int n,l,m,i
-    cdef:
-        int norbits = xyz.shape[0]
-        double costh,un,xi,phi,r,unm1,plm1m,plm2m
-        double clm,dlm
-        double temp3,temp4,temp5,ttemp5
-
-    # initialize empty arrays
-    cdef:
-        double[::1] cosmphi = np.zeros(lmax+1)
-        double[::1] sinmphi = np.zeros(lmax+1)
-        double[:,::1] ultrasp = np.zeros((nmax+1,lmax+1))
-        double[:,::1] ultrasp1 = np.zeros((nmax+1,lmax+1))
-        double[:,::1] ultraspt = np.zeros((nmax+1,lmax+1))
-        double[:,::1] anltilde = np.zeros((nmax+1,lmax+1))
-        double[:,::1] plm = np.zeros((lmax+1,lmax+1))
-
-    cdef:
-        double[::1] twoalpha = np.zeros(lmax+1)
-        double[::1] dblfact = np.zeros(lmax+1)
-        double[:,::1] c1 = np.zeros((nmax,lmax+1))
-        double[:,::1] c2 = np.zeros((nmax,lmax+1))
-        double[::1] c3 = np.zeros(nmax)
-        double[:,::1] coeflm = np.zeros((lmax+1,lmax+1))
-
-    dblfact[0] = 1.
-    for l in range(2,lmax+1):
-        dblfact[l] = dblfact[l-1] * (2.*l - 1.)
-
-    for n in range(nmax+1):
-        for l in range(lmax+1):
-            knl = 0.5*n*(n + 4.*l + 3.) + (l + 1.)*(2.*l + 1.)
-            anltilde[n,l] = -2.**(8.*l+6.)*gsl_sf_fact(n)*(n+2.*l+1.5)
-            arggam = 2.*l + 1.5
-            anltilde[n,l] = anltilde[n,l] * (exp(gsl_sf_lngamma(arggam)))**2
-            anltilde[n,l] = anltilde[n,l] / (4.*M_PI*knl*gsl_sf_fact(n+4*l+2))
-
-    for l in range(lmax+1):
-        twoalpha[l] = 2.0*(2.*l + 1.5)
-
-        for m in range(0,l+1):
-            deltam0 = 1. if m == 0 else 2.
-            coeflm[l,m] = (2.*l+1.) * deltam0 * gsl_sf_fact(l-m)/gsl_sf_fact(l+m)
-
-    for i in range(norbits):
-        r = sqrt(xyz[i,0]*xyz[i,0] + xyz[i,1]*xyz[i,1] + xyz[i,2]*xyz[i,2])
-        costh = xyz[i,2]/r
-        phi = atan2(xyz[i,1], xyz[i,0])
-        xi = (r-1.)/(r+1.)
-
-        for m in range(lmax+1):
-            cosmphi[m] = cos(m*phi)
-            sinmphi[m] = sin(m*phi)
-
-        ar = 0.
-        ath = 0.
-        aphi = 0.
-        for l in range(lmax+1):
-            ultrasp[0,l] = 1.0
-            ultrasp[1,l] = twoalpha[l]*xi
-            ultrasp1[0,l] = 0.0
-            ultrasp1[1,l] = 1.0
-
-            un = ultrasp[1,l]
-            unm1 = 1.0
-            for n in range(1,nmax):
-                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
-                unm1 = un
-                un = ultrasp[n+1,l]
-                ultrasp1[n+1,l] = ((twoalpha[l] + (n+1)-1.)*unm1-(n+1)*xi*ultrasp[n+1,l]) / \
-                                   (twoalpha[l]*(1.-xi*xi))
-
-            for n in range(nmax+1):
-               ultraspt[n,l] = ultrasp[n,l]*anltilde[n,l]
-
-        for m in range(lmax+1):
-            plm[m,m] = 1.0
-            if m > 0:
-                plm[m,m] = (-1.)**m * dblfact[m] * sqrt(1.-costh*costh)**m
-
-            plm1m = plm[m,m]
-            plm2m = 0.0
-
-            for l in range(m+1,lmax+1):
-                plm[l,m] = (costh*(2.*l-1.)*plm1m-(l+m-1.)*plm2m)/(l-m)
-                plm2m = plm1m
-                plm1m = plm[l,m]
-
-        for l in range(lmax+1):
-            temp5 = r**l/((1.+r)**(2*l+1))*mass[i]
-            for m in range(0,l+1):
-                ttemp5 = temp5 * plm[l,m] * coeflm[l,m]
-                temp3 = ttemp5 * sinmphi[m]
-                temp4 = ttemp5 * cosmphi[m]
-
-                for n in range(nmax+1):
-                    sin_coeff[n,l,m] += temp3*ultraspt[n,l]
-                    cos_coeff[n,l,m] += temp4*ultraspt[n,l]
-
 cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
                    int nmax, int lmax):
@@ -164,10 +61,10 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
         double[:,::1] c1 = np.zeros((nmax,lmax+1))
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
-    dblfact[0] = 1.
 
+    dblfact[0] = 1.
     for l in range(2,lmax+1):
-        dblfact[l] = dblfact[l-1] * (2.*l - 1.)
+        dblfact[l-1] = dblfact[l-2] * (2*l - 1.)
 
     for l in range(lmax+1):
         twoalpha[l] = 2.0*(2.*l+1.5)
@@ -295,10 +192,10 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
         double[:,::1] c1 = np.zeros((nmax, lmax+1))
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
-    dblfact[0] = 1.
 
+    dblfact[0] = 1.
     for l in range(2,lmax+1):
-        dblfact[l] = dblfact[l-1] * (2.*l - 1.)
+        dblfact[l-1] = dblfact[l-2] * (2.*l - 1.)
 
     for l in range(lmax+1):
         twoalpha[l] = 2.0*(2.*l + 1.5)
@@ -357,3 +254,102 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
 
             phinltil = r**l / ((1.+r)**(2*l+1))
             pot[i] += temp3*phinltil
+
+cpdef compute_coefficients(double[:,::1] xyz, double[::1] mass,
+                           double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
+                           int nmax, int lmax):
+
+    cdef int n,l,m,k
+    cdef:
+        int norbits = xyz.shape[0]
+        double costh,un,xi,phi,r,unm1,plm1m,plm2m
+        double clm,dlm
+        double temp3,temp4,temp5,ttemp5
+
+    # initialize empty arrays
+    cdef:
+        double[::1] cosmphi = np.zeros(lmax+1)
+        double[::1] sinmphi = np.zeros(lmax+1)
+        double[:,::1] ultrasp = np.zeros((nmax+1,lmax+1))
+        double[:,::1] ultrasp1 = np.zeros((nmax+1,lmax+1))
+        double[:,::1] ultraspt = np.zeros((nmax+1,lmax+1))
+        double[:,::1] anltilde = np.zeros((nmax+1,lmax+1))
+        double[:,::1] plm = np.zeros((lmax+1,lmax+1))
+
+    cdef:
+        double[::1] twoalpha = np.zeros(lmax+1)
+        double[::1] dblfact = np.zeros(lmax+1)
+        double[:,::1] c1 = np.zeros((nmax,lmax+1))
+        double[:,::1] c2 = np.zeros((nmax,lmax+1))
+        double[::1] c3 = np.zeros(nmax)
+        double[:,::1] coeflm = np.zeros((lmax+1,lmax+1))
+
+    dblfact[0] = 1.
+    for l in range(2,lmax+1):
+        dblfact[l-1] = dblfact[l-2] * (2*l - 1.)
+
+    for n in range(nmax+1):
+        for l in range(lmax+1):
+            knl = 0.5*n*(n + 4.*l + 3.) + (l + 1.)*(2.*l + 1.)
+            anltilde[n,l] = -2.**(8.*l+6.)*gsl_sf_fact(n)*(n+2.*l+1.5)
+            arggam = 2.*l + 1.5
+            anltilde[n,l] *= (exp(gsl_sf_lngamma(arggam)))**2
+            anltilde[n,l] /= (4.*M_PI*knl*gsl_sf_fact(n+4*l+2))
+
+    for l in range(lmax+1):
+        twoalpha[l] = 2.*(2.*l + 1.5)
+
+        for m in range(0,l+1):
+            deltam0 = 1. if m == 0 else 2.
+            coeflm[l,m] = (2.*l+1.) * deltam0 * gsl_sf_fact(l-m)/gsl_sf_fact(l+m)
+
+    for k in range(norbits):
+        r = sqrt(xyz[k,0]*xyz[k,0] + xyz[k,1]*xyz[k,1] + xyz[k,2]*xyz[k,2])
+        costh = xyz[k,2]/r
+        phi = atan2(xyz[k,1], xyz[k,0])
+        xi = (r-1.)/(r+1.)
+
+        for m in range(lmax+1):
+            cosmphi[m] = cos(m*phi)
+            sinmphi[m] = sin(m*phi)
+
+        ar = 0.
+        ath = 0.
+        aphi = 0.
+        for l in range(lmax+1):
+            ultrasp[0,l] = 1.0
+            ultrasp[1,l] = twoalpha[l]*xi
+
+            un = ultrasp[1,l]
+            unm1 = 1.0
+            for n in range(1,nmax):
+                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
+                unm1 = un
+                un = ultrasp[n+1,l]
+
+            for n in range(nmax+1):
+               ultraspt[n,l] = ultrasp[n,l]*anltilde[n,l]
+
+        for m in range(lmax+1):
+            plm[m,m] = 1.0
+            if m > 0:
+                plm[m,m] = (-1.)**m * dblfact[m] * sqrt(1.-costh*costh)**m
+
+            plm1m = plm[m,m]
+            plm2m = 0.0
+
+            for l in range(m+1,lmax+1):
+                plm[l,m] = (costh*(2.*l-1.)*plm1m - (l+m-1.)*plm2m) / (l-m)
+                plm2m = plm1m
+                plm1m = plm[l,m]
+
+        for l in range(lmax+1):
+            temp5 = r**l / ((1.+r)**(2*l+1)) * mass[k]
+            for m in range(0,l+1):
+                ttemp5 = temp5 * plm[l,m] * coeflm[l,m]
+                temp3 = ttemp5 * sinmphi[m]
+                temp4 = ttemp5 * cosmphi[m]
+
+                for n in range(nmax+1):
+                    sin_coeff[n,l,m] += temp3*ultraspt[n,l]
+                    cos_coeff[n,l,m] += temp4*ultraspt[n,l]
