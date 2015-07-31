@@ -56,9 +56,9 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
 
-    dblfact[0] = 1.
+    dblfact[1] = 1.
     for l in range(2,lmax+1):
-        dblfact[l-1] = dblfact[l-2] * (2.*l - 1.)
+        dblfact[l] = dblfact[l-1] * (2.*l - 1.)
 
     for l in range(lmax+1):
         twoalpha[l] = 2.0*(2.*l + 1.5)
@@ -88,7 +88,7 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
             un = ultrasp[1,l]
             unm1 = 1.0
             for n in range(1,nmax):
-                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
+                ultrasp[n+1,l] = (c1[n-1,l]*xi*un - c2[n-1,l]*unm1) * c3[n-1]
                 unm1 = un
                 un = ultrasp[n+1,l]
 
@@ -152,9 +152,9 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
 
-    dblfact[0] = 1.
+    dblfact[1] = 1.
     for l in range(2,lmax+1):
-        dblfact[l-1] = dblfact[l-2] * (2*l - 1.)
+        dblfact[l] = dblfact[l-1] * (2*l - 1.)
 
     for l in range(lmax+1):
         twoalpha[l] = 2.0*(2.*l+1.5)
@@ -188,7 +188,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
             un = ultrasp[1,l]
             unm1 = 1.0
             for n in range(1,nmax):
-                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
+                ultrasp[n+1,l] = (c1[n-1,l]*xi*un - c2[n-1,l]*unm1) * c3[n-1]
                 unm1 = un
                 un = ultrasp[n+1,l]
                 ultrasp1[n+1,l] = ((twoalpha[l] + (n+1)-1.)*unm1-(n+1)*xi*ultrasp[n+1,l]) / \
@@ -284,9 +284,18 @@ cpdef compute_coefficients(double[:,::1] xyz, double[::1] mass,
         double[::1] c3 = np.zeros(nmax)
         double[:,::1] coeflm = np.zeros((lmax+1,lmax+1))
 
-    dblfact[0] = 1.
+    dblfact[1] = 1.
     for l in range(2,lmax+1):
-        dblfact[l-1] = dblfact[l-2] * (2*l - 1.)
+        dblfact[l] = dblfact[l-1] * (2*l - 1.)
+
+    for l in range(lmax+1):
+        twoalpha[l] = 2.0*(2.*l+1.5)
+
+    for n in range(1,nmax+1):
+        c3[n-1] = 1./(n+1)
+        for l in range(lmax+1):
+            c1[n-1,l] = 2.0*n + twoalpha[l]
+            c2[n-1,l] = n-1.0 + twoalpha[l]
 
     for n in range(nmax+1):
         for l in range(lmax+1):
@@ -323,7 +332,7 @@ cpdef compute_coefficients(double[:,::1] xyz, double[::1] mass,
             un = ultrasp[1,l]
             unm1 = 1.0
             for n in range(1,nmax):
-                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
+                ultrasp[n+1,l] = (c1[n-1,l]*xi*un - c2[n-1,l]*unm1) * c3[n-1]
                 unm1 = un
                 un = ultrasp[n+1,l]
 
