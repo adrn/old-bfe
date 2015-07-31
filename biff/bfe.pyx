@@ -28,6 +28,26 @@ cdef extern from "gsl/gsl_sf_gamma.h":
 
 __all__ = ['value', 'acceleration', 'compute_coefficients']
 
+cpdef _compute_helpers(double[::1] twoalpha, double[::1] dblfact,
+                       double[:,::1] c1, double[:,::1] c2,
+                       double[::1] c3, int nmax, int lmax):
+    cdef int l, n
+
+    dblfact[1] = 1.
+    for l in range(2,lmax+1):
+        dblfact[l] = dblfact[l-1] * (2.*l - 1.)
+
+    for l in range(lmax+1):
+        twoalpha[l] = 2.0*(2.*l + 1.5)
+
+    for n in range(1,nmax+1):
+        c3[n-1] = 1./(n+1)
+        for l in range(lmax+1):
+            c1[n-1,l] = 2.0*n + twoalpha[l]
+            c2[n-1,l] = n-1.0 + twoalpha[l]
+    # ----------------------------------------------------------------
+
+
 cpdef value(double[:,::1] xyz, double[::1] pot,
             double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
             int nmax, int lmax):
@@ -55,19 +75,7 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
         double[:,::1] c1 = np.zeros((nmax, lmax+1))
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
-
-    dblfact[1] = 1.
-    for l in range(2,lmax+1):
-        dblfact[l] = dblfact[l-1] * (2.*l - 1.)
-
-    for l in range(lmax+1):
-        twoalpha[l] = 2.0*(2.*l + 1.5)
-
-    for n in range(1,nmax+1):
-        c3[n-1] = 1./(n+1)
-        for l in range(lmax+1):
-            c1[n-1,l] = 2.0*n + twoalpha[l]
-            c2[n-1,l] = n-1.0 + twoalpha[l]
+    _compute_helpers(twoalpha, dblfact, c1, c2, c3, nmax, lmax)
     # ----------------------------------------------------------------
 
     for i in range(norbits):
@@ -151,19 +159,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
         double[:,::1] c1 = np.zeros((nmax,lmax+1))
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
-
-    dblfact[1] = 1.
-    for l in range(2,lmax+1):
-        dblfact[l] = dblfact[l-1] * (2*l - 1.)
-
-    for l in range(lmax+1):
-        twoalpha[l] = 2.0*(2.*l+1.5)
-
-    for n in range(1,nmax+1):
-        c3[n-1] = 1./(n+1)
-        for l in range(lmax+1):
-            c1[n-1,l] = 2.0*n + twoalpha[l]
-            c2[n-1,l] = n-1.0 + twoalpha[l]
+    _compute_helpers(twoalpha, dblfact, c1, c2, c3, nmax, lmax)
     # ----------------------------------------------------------------
 
     for i in range(norbits):
@@ -275,27 +271,20 @@ cpdef compute_coefficients(double[:,::1] xyz, double[::1] mass,
         double[:,::1] ultraspt = np.zeros((nmax+1,lmax+1))
         double[:,::1] anltilde = np.zeros((nmax+1,lmax+1))
         double[:,::1] plm = np.zeros((lmax+1,lmax+1))
+        double[:,::1] coeflm = np.zeros((lmax+1,lmax+1))
 
+    # ----------------------------------------------------------------
+    # This stuff was all in a "firstc" or "first calculation" check
+    #   in Fortran. We may not need to compute this every time...but
+    #   for now, just do it™
     cdef:
         double[::1] twoalpha = np.zeros(lmax+1)
         double[::1] dblfact = np.zeros(lmax+1)
-        double[:,::1] c1 = np.zeros((nmax,lmax+1))
+        double[:,::1] c1 = np.zeros((nmax, lmax+1))
         double[:,::1] c2 = np.zeros((nmax,lmax+1))
         double[::1] c3 = np.zeros(nmax)
-        double[:,::1] coeflm = np.zeros((lmax+1,lmax+1))
-
-    dblfact[1] = 1.
-    for l in range(2,lmax+1):
-        dblfact[l] = dblfact[l-1] * (2*l - 1.)
-
-    for l in range(lmax+1):
-        twoalpha[l] = 2.0*(2.*l+1.5)
-
-    for n in range(1,nmax+1):
-        c3[n-1] = 1./(n+1)
-        for l in range(lmax+1):
-            c1[n-1,l] = 2.0*n + twoalpha[l]
-            c2[n-1,l] = n-1.0 + twoalpha[l]
+    _compute_helpers(twoalpha, dblfact, c1, c2, c3, nmax, lmax)
+    # ----------------------------------------------------------------
 
     for n in range(nmax+1):
         for l in range(lmax+1):
