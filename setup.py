@@ -22,7 +22,7 @@ extensions = []
 bfe = Extension("biff.bfe",
                 ["biff/bfe.pyx"],
                 include_dirs=[numpy_incl_path],
-                libraries=["gsl"])
+                libraries=["gsl","gslcblas"])
 extensions.append(bfe)
 
 setup(
