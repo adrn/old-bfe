@@ -41,12 +41,10 @@ cpdef _compute_helpers(double[::1] twoalpha, double[::1] dblfact,
         twoalpha[l] = 2.0*(2.*l + 1.5)
 
     for n in range(1,nmax+1):
-        c3[n-1] = 1./(n+1)
+        c3[n] = 1./(n+1)
         for l in range(lmax+1):
-            c1[n-1,l] = 2.0*n + twoalpha[l]
-            c2[n-1,l] = n-1.0 + twoalpha[l]
-    # ----------------------------------------------------------------
-
+            c1[n,l] = 2.0*n + twoalpha[l]
+            c2[n,l] = n-1.0 + twoalpha[l]
 
 cpdef value(double[:,::1] xyz, double[::1] pot,
             double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
@@ -72,9 +70,9 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
     cdef:
         double[::1] twoalpha = np.zeros(lmax+1)
         double[::1] dblfact = np.zeros(lmax+1)
-        double[:,::1] c1 = np.zeros((nmax, lmax+1))
-        double[:,::1] c2 = np.zeros((nmax,lmax+1))
-        double[::1] c3 = np.zeros(nmax)
+        double[:,::1] c1 = np.zeros((nmax+1, lmax+1))
+        double[:,::1] c2 = np.zeros((nmax+1,lmax+1))
+        double[::1] c3 = np.zeros(nmax+1)
     _compute_helpers(twoalpha, dblfact, c1, c2, c3, nmax, lmax)
     # ----------------------------------------------------------------
 
@@ -96,7 +94,7 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
             un = ultrasp[1,l]
             unm1 = 1.0
             for n in range(1,nmax):
-                ultrasp[n+1,l] = (c1[n-1,l]*xi*un - c2[n-1,l]*unm1) * c3[n-1]
+                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
                 unm1 = un
                 un = ultrasp[n+1,l]
 
@@ -156,9 +154,9 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
     cdef:
         double[::1] twoalpha = np.zeros(lmax+1)
         double[::1] dblfact = np.zeros(lmax+1)
-        double[:,::1] c1 = np.zeros((nmax,lmax+1))
-        double[:,::1] c2 = np.zeros((nmax,lmax+1))
-        double[::1] c3 = np.zeros(nmax)
+        double[:,::1] c1 = np.zeros((nmax+1,lmax+1))
+        double[:,::1] c2 = np.zeros((nmax+1,lmax+1))
+        double[::1] c3 = np.zeros(nmax+1)
     _compute_helpers(twoalpha, dblfact, c1, c2, c3, nmax, lmax)
     # ----------------------------------------------------------------
 
@@ -184,7 +182,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
             un = ultrasp[1,l]
             unm1 = 1.0
             for n in range(1,nmax):
-                ultrasp[n+1,l] = (c1[n-1,l]*xi*un - c2[n-1,l]*unm1) * c3[n-1]
+                ultrasp[n+1,l] = (c1[n,l]*xi*un - c2[n,l]*unm1) * c3[n]
                 unm1 = un
                 un = ultrasp[n+1,l]
                 ultrasp1[n+1,l] = ((twoalpha[l] + (n+1)-1.)*unm1-(n+1)*xi*ultrasp[n+1,l]) / \
@@ -205,7 +203,7 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
 
         dplm[0,0] = 0.0
         for l in range(1,lmax+1):
-            for m in range(0,l):
+            for m in range(0,l+1):
                 if l == m:
                     dplm[l,m] = l*costh*plm[l,m] / (costh*costh-1.0)
                 else:
