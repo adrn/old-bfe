@@ -122,7 +122,7 @@ cpdef value(double[:,::1] xyz, double[::1] pot,
                 temp3 += plm[l,m] * (clm*cosmphi[m] + dlm*sinmphi[m])
 
             phinltil = r**l / ((1.+r)**(2*l+1))
-            pot[i] += temp3*phinltil
+            pot[i] += -temp3*phinltil
 
 cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
                    double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
@@ -245,9 +245,9 @@ cpdef acceleration(double[:,::1] xyz, double[:,::1] acc,
         sinth = sqrt(1.-costh*costh)
         ath = -sinth*ath/r
         aphi = aphi/(r*sinth)
-        acc[i,0] = (sinth*cosp*ar + costh*cosp*ath - sinp*aphi)
-        acc[i,1] = (sinth*sinp*ar + costh*sinp*ath + cosp*aphi)
-        acc[i,2] = (costh*ar - sinth*ath)
+        acc[i,0] = -(sinth*cosp*ar + costh*cosp*ath - sinp*aphi)
+        acc[i,1] = -(sinth*sinp*ar + costh*sinp*ath + cosp*aphi)
+        acc[i,2] = -(costh*ar - sinth*ath)
 
 cpdef compute_coefficients(double[:,::1] xyz, double[::1] mass,
                            double[:,:,::1] sin_coeff, double[:,:,::1] cos_coeff,
